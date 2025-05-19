@@ -1,11 +1,17 @@
 import requests
-import bs4.element
+import re
 from bs4 import BeautifulSoup
+from typing import TypedDict
 
 ichimoe_url = 'https://ichi.moe/cl/qr/'
 
-def get_words(jp_text: str) -> set[str]:
-    words : set[str] = set()
+class Word(TypedDict):
+    jp: str
+    reading: str
+    trans: str
+
+def get_words(jp_text: str) -> dict[str, Word]:
+    words : dict[str, Word] = dict()
 
     # Get Ichimoe page HTML
     jp_text = jp_text.replace("\n", " ")
@@ -30,7 +36,18 @@ def get_words(jp_text: str) -> set[str]:
         # Get all <dt> tags and add its content to the words sets.
         dt_tags = soup.find_all('dt')
         for dt_tag in dt_tags:
-            words.add(dt_tag.text.strip())
+            text = re.sub(r'^\d+\.\s*', '', dt_tag.text).strip().split(' 【')
+            jp = text[0]
+            reading = jp
+            if len(text) > 1:
+                reading = text[1][:-1]
+            trans = dt_tag.find_next_sibling('dd').find('span', 'gloss-desc')
+            if trans != None:
+                trans = trans.text.strip()
+            else:
+                trans = ''
+            
+            words[jp] = {'jp': jp, 'reading': reading, 'trans': trans}
 
         # For every <dt> tag, find the first parent <dl> tag and remove
         # their child <dt> content from the set.
@@ -39,7 +56,6 @@ def get_words(jp_text: str) -> set[str]:
             if dl_opt != None:
                 dt_opt = dl_opt.find('dt', recursive=False)
                 if dt_opt != None:
-                    words.discard(dt_opt.text.strip())
-        
+                    words.pop(re.sub(r'^\d+\.\s*', '', dt_opt.text).strip().split(' 【')[0], None)
 
-    return set() # TODO
+    return words
