@@ -1,9 +1,12 @@
 import requests
+import bs4.element
 from bs4 import BeautifulSoup
 
 ichimoe_url = 'https://ichi.moe/cl/qr/'
 
-def add_chars(set: set[str], jp_text: str) -> None:
+def get_words(jp_text: str) -> set[str]:
+    words : set[str] = set()
+
     # Get Ichimoe page HTML
     jp_text = jp_text.replace("\n", " ")
     response : requests.Response = requests.get(
@@ -23,5 +26,20 @@ def add_chars(set: set[str], jp_text: str) -> None:
         # <dl> tags which have no <dl> as descendant.
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        # TODO
-    return
+
+        # Get all <dt> tags and add its content to the words sets.
+        dt_tags = soup.find_all('dt')
+        for dt_tag in dt_tags:
+            words.add(dt_tag.text.strip())
+
+        # For every <dt> tag, find the first parent <dl> tag and remove
+        # their child <dt> content from the set.
+        for dt_tag in dt_tags:
+            dl_opt = dt_tag.find_parent('dl').find_parent('dl')
+            if dl_opt != None:
+                dt_opt = dl_opt.find('dt', recursive=False)
+                if dt_opt != None:
+                    words.discard(dt_opt.text.strip())
+        
+
+    return set() # TODO
