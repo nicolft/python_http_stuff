@@ -1,3 +1,4 @@
+import csv
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -59,3 +60,32 @@ def get_words(jp_text: str) -> dict[str, Word]:
                     words.pop(re.sub(r'^\d+\.\s*', '', dt_opt.text).strip().split(' 【')[0], None)
 
     return words
+
+if __name__ == "__main__":
+    '''
+    Take an input file (which contains Japanese) and output
+    Japanese words, readings, and translations into a .tsv file.
+    '''
+    import sys
+
+    if len(sys.argv) != 2:
+        print(f"Usage: python3 {sys.argv[0]} <input_file>")
+        sys.exit(1)
+
+    input_file = sys.argv[1]
+
+    with open(input_file, "r", encoding="utf-8") as f:
+        s = f.read()
+
+    # Ichimoe can handle upwards of 700+ characters. But somewhere there is a limit.
+    paragraphs = s.split('\n')
+
+    words = dict()
+    for paragraph in paragraphs:
+        words |= get_words(paragraph)
+
+    with open('ichimoe_output.tsv', 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f, delimiter='\t')
+        writer.writerow(['Japanese', 'Reading', 'Translation'])  # Header
+        for item in words.values():
+            writer.writerow([item['jp'], item['reading'], item['trans']])
